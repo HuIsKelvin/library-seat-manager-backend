@@ -1,9 +1,16 @@
-# README
+# 图书馆选座系统 - 后端
 
-## 创建虚拟运行环境
+[TOC]
+
+## 项目部署
+
+> 参考 Flask 官方文档。[Flask安装](https://dormousehole.readthedocs.io/en/latest/installation.html)
+
+### 创建虚拟运行环境
 
 ```bash
 // 利用venv，创建一个名为venv的虚拟环境
+// 如果项目里已经有 venv 这个文件夹了，就不用再创建。直接激活环境。
 python3 -m venv venv
 py -3 -m venv venv  // Windows 下
 
@@ -14,7 +21,7 @@ $ . venv/bin/activate
 // 激活后，你的终端提示符会显示虚拟环境的名称。
 ```
 
-## 项目启动
+### 项目启动
 
 可以使用 flask 命令或者 python 的 -m 开关来运行这个应用。在运行应用之前，需要在终端里导出 FLASK_APP 环境变量:
 

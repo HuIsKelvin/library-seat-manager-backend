@@ -6,7 +6,7 @@ app = Flask(__name__)
 '''
 进入图书馆
 '''
-@app.route("/enterlib", methods=['POST', 'GET'])
+@app.route("/enterLib", methods=['POST', 'GET'])
 def enter_lib():
     conn = sqlite3.connect('feedback.db')
     cursor = conn.cursor()

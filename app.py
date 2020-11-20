@@ -26,6 +26,8 @@ def login_lib():
         data = dict()
         data['studentID'] = stu_id
         data['studentName'] = listexample[0][0]
+
+    conn.commit()
     
     return jsonify(info)
 
@@ -65,7 +67,6 @@ def enter_lib():
         info['statusCode'] = 400
         return jsonify(info)
 
-
 '''
 离开图书馆
 '''
@@ -74,9 +75,10 @@ def leave_lib():
     conn = sqlite3.connect('feedback.db')
     cursor = conn.cursor()
 
-    accept_data = json.loads(request.get_data())
-
-    stu_id = accept_data['studentID']
+    # accept_data = json.loads(request.get_data())
+    #
+    # stu_id = accept_data['studentID']
+    stu_id = 3
 
     sql = '''select seat_id from seat_info where (user_id=:user_id_toFeed)'''
     cursor.execute(sql, {'user_id_toFeed': stu_id})
@@ -92,6 +94,7 @@ def leave_lib():
     cursor.execute(sql, {'user_id_toFeed': stu_id})
 
     listexample = cursor.fetchall()
+    print(listexample)
 
     if len(listexample) != 0:
         # 短暂离席表中有这个人
@@ -105,7 +108,6 @@ def leave_lib():
     conn.commit()
 
     return jsonify(info)
-
 
 '''
 短暂离席
@@ -144,7 +146,6 @@ def seat_leave():
     data['studentID'] = stu_id
     info['data'] = data
     return jsonify(info)
-
 
 '''
 查询用户是否有座位
@@ -218,7 +219,6 @@ def select_seat():
     conn.commit()
 
     return jsonify(info)
-
 
 if __name__ == '__main__':
     app.run()

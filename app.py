@@ -98,10 +98,11 @@ def seat_leave():
     sql = '''select seat_id from seat_info where(user_id=:user_id_toFeed)'''
     cursor.execute(sql, {'user_id_toFeed': stu_id})
     listexample = cursor.fetchall()
-    
+
     if len(listexample) == 0:   # 该学生没有事先在seat_info中占座
         info['statusCode'] = 400
     else:
+        info['statusCode'] = 200
         seat_id = listexample[0][0]
         sql = '''insert into seat_leave_briefly
                 (id, seat_id, user_id, leave_time)

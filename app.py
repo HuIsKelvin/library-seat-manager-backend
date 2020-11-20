@@ -10,7 +10,7 @@ app = Flask(__name__)
 @app.route('/login', methods=['POST', 'GET'])
 def login_lib():
     conn = sqlite3.connect('feedback.db')
-    cursor = conn.cursor
+    cursor = conn.cursor()
     
     accept_data = json.loads(request.get_data())
     stu_id = accept_data['studentID']

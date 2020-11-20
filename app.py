@@ -26,6 +26,7 @@ def login_lib():
         data = dict()
         data['studentID'] = stu_id
         data['studentName'] = listexample[0][0]
+        info['data'] = data
 
     conn.commit()
     

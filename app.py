@@ -1,6 +1,7 @@
 import sqlite3
 from flask import Flask, jsonify, json, request
 import schedule
+import time
 
 app = Flask(__name__)
 
@@ -33,6 +34,10 @@ def all_seat_info():
             seats.append(seat_data_feed)
         data['seats'] = seats
         info['data'] = data
+
+    conn.commit()
+    cursor.close()
+    conn.close()
 
     return jsonify(info)
 

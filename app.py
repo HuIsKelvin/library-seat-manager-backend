@@ -1,7 +1,33 @@
 import sqlite3
 from flask import Flask, jsonify, json, request
+import schedule
 
 app = Flask(__name__)
+
+'''
+在图书馆登录
+'''
+@app.route('/login', methods=['POST', 'GET'])
+def login_lib():
+    conn = sqlite3.connect('feedback.db')
+    cursor = conn.cursor
+    
+    accept_data = json.loads(request.get_data())
+    stu_id = accept_data['studentID']
+    info = dict()
+
+    sql = '''select student_name from student_info where (student_id=:stu_id_toFeed)'''
+    cursor.execute(sql, {'stu_id_toFeed':stu_id})
+    listexample = cursor.fetchall()
+    if len(listexample) == 0:   # 查无此人，登陆失败
+        info['statusCode'] = 400
+    else:
+        info['statusCode'] = 200
+        data = dict()
+        data['studentID'] = stu_id
+        data['studentName'] = listexample[0][0]
+    
+    return jsonify(info)
 
 '''
 进入图书馆
@@ -12,7 +38,6 @@ def enter_lib():
     cursor = conn.cursor()
 
     accept_data = json.loads(request.get_data())
-
     stu_id = accept_data['studentID']
 
     sql = '''select seat_id from seat_leave_briefly where (user_id=:user_id_toFeed)'''

@@ -90,29 +90,31 @@ def seat_leave():
     conn = sqlite3.connect('feedback.db')
     cursor = conn.cursor()
 
-    # accept_data = json.loads(request.get_data())
-    #
-    # stu_id = accept_data['studentID']
-    stu_id = 4
-    sql = '''select seat_id from seat_info where(user_id=:user_id)'''
-    cursor.execute(sql, {'user_id': stu_id})
-    seat_id = cursor.fetchall()
-    seat_id = seat_id[0][0]
+    accept_data = json.loads(request.get_data())
+    
+    stu_id = accept_data['studentID']
+    info = dict()
 
-    sql = '''insert into seat_leave_briefly
-             (id, seat_id, user_id, leave_time)
-             values
-             (:id, :seat_id, :user_id, datetime('now', 'localtime'))'''
-    cursor.execute(sql, {'id': 210, 'seat_id': seat_id, 'user_id': stu_id})
+    sql = '''select seat_id from seat_info where(user_id=:user_id_toFeed)'''
+    cursor.execute(sql, {'user_id_toFeed': stu_id})
+    listexample = cursor.fetchall()
+    
+    if len(listexample) == 0:   # 该学生没有事先在seat_info中占座
+        info['statusCode'] = 400
+    else:
+        seat_id = listexample[0][0]
+        sql = '''insert into seat_leave_briefly
+                (id, seat_id, user_id, leave_time)
+                values
+                (:id, :seat_id, :user_id, datetime('now', 'localtime'))'''
+        cursor.execute(sql, {'id': 210, 'seat_id': seat_id, 'user_id': stu_id})
 
-    sql = '''update seat_info set seat_status=2 where seat_info."user_id"='''+(str(stu_id))
-    cursor.execute(sql)
+        sql = '''update seat_info set seat_status=2 where seat_info."user_id"='''+(str(stu_id))
+        cursor.execute(sql)
 
     conn.commit()
 
-    info = dict()
     data = dict()
-    info['statusCode'] = 200
     data['studentID'] = stu_id
     info['data'] = data
     return jsonify(info)

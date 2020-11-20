@@ -29,6 +29,8 @@ def login_lib():
         info['data'] = data
 
     conn.commit()
+    cursor.close()
+    conn.close()
     
     return jsonify(info)
 
@@ -60,6 +62,8 @@ def enter_lib():
         cursor.execute(sql, {'user_id_toFeed': stu_id})
 
         conn.commit()
+        cursor.close()
+        conn.close()
 
         return jsonify(info)
 
@@ -107,6 +111,8 @@ def leave_lib():
         # 这个人直接离席，返回200还是400？
 
     conn.commit()
+    cursor.close()
+    conn.close()
 
     return jsonify(info)
 
@@ -114,7 +120,7 @@ def leave_lib():
 短暂离席
 '''
 @app.route('/seat/leave', methods=['POST', 'GET'])
-def seat_leave():
+def leave_briefly():
     conn = sqlite3.connect('feedback.db')
     cursor = conn.cursor()
 
@@ -135,13 +141,15 @@ def seat_leave():
         sql = '''insert into seat_leave_briefly
                 (id, seat_id, user_id, leave_time)
                 values
-                (:id, :seat_id, :user_id, datetime('now', 'localtime'))'''
-        cursor.execute(sql, {'id': 210, 'seat_id': seat_id, 'user_id': stu_id})
+                (null , :seat_id, :user_id, datetime('now', 'localtime'))'''
+        cursor.execute(sql, {'seat_id': seat_id, 'user_id': stu_id})    # 实现了主件id的顺序递增插入（修改了数据库表属性）
 
         sql = '''update seat_info set seat_status=2 where seat_info."user_id"='''+(str(stu_id))
         cursor.execute(sql)
 
     conn.commit()
+    cursor.close()
+    conn.close()
 
     data = dict()
     data['studentID'] = stu_id
@@ -183,6 +191,8 @@ def search_stu_seat():
         info['data'] = data
 
     conn.commit()
+    cursor.close()
+    conn.close()
 
     return jsonify(info)
 
@@ -201,12 +211,12 @@ def select_seat():
     stu_id = accept_data['studentID']
     seat_id = accept_data['seatID']
     info = dict()
-    sql = '''select seat_type from seat_info where (seat_id=:seat_id_toFeed)'''
+    sql = '''select seat_status, seat_type from seat_info where (seat_id=:seat_id_toFeed)'''
     cursor.execute(sql, {'seat_id_toFeed': seat_id})
     listexample = cursor.fetchall()
 
-    if len(listexample) == 0 or listexample[0][0] == 0:
-        info['statusCode'] = 400  # 查找失败（前端seat_id非法）或者seat_id所指座位标记为损坏，返回400
+    if len(listexample) == 0 or listexample[0][0] != 0 or listexample[0][1] == 0:
+        info['statusCode'] = 400  # 查找失败（前端seat_id非法）或者该seat_id座位已被占用，或者seat_id所指座位标记为损坏，返回400
     else:
         info['statusCode'] = 200  # 查找成功
         sql = '''update seat_info set seat_status=1, user_id=:stu_id_toFeed where (seat_id=:seat_id_toFeed)'''
@@ -218,6 +228,8 @@ def select_seat():
     info['data'] = data
 
     conn.commit()
+    cursor.close()
+    conn.close()
 
     return jsonify(info)
 

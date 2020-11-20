@@ -4,6 +4,39 @@ import schedule
 
 app = Flask(__name__)
 
+
+@app.route('/seat/info', methods=['POST', 'GET'])
+def all_seat_info():
+    conn = sqlite3.connect('feedback.db')
+    cursor = conn.cursor()
+    info = dict()
+
+    sql = '''select seat_id, user_id, seat_status, seat_type, seat_row, seat_row, seat_col from seat_info'''
+    cursor.execute(sql)
+    listexample = cursor.fetchall()
+
+    if len(listexample) == 0:
+        info['statusCode'] = 400  # 此时seat_info表为空，没有座位，后台错误
+    else:
+        info['statusCode'] = 200
+        data = dict()
+        seats = []
+        for i in range(len(listexample)):
+            seat_data_feed = dict()
+            seat_id, user_id, seat_status, seat_type, seat_row, seat_row, seat_col = listexample[i]
+            seat_data_feed['seatID'] = seat_id
+            seat_data_feed['studentID'] = user_id  # 如果studentID = -1则说明此位置没有人做
+            seat_data_feed['seatStatus'] = seat_status
+            seat_data_feed['seatType'] = seat_type
+            seat_data_feed['seatRow'] = seat_row
+            seat_data_feed['seatCol'] = seat_col
+            seats.append(seat_data_feed)
+        data['seats'] = seats
+        info['data'] = data
+
+    return jsonify(info)
+
+
 '''
 在图书馆登录
 '''

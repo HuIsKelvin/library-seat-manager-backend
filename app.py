@@ -26,7 +26,6 @@ def all_seat_info():
             seat_data_feed = dict()
             seat_id, user_id, seat_status, seat_type, seat_row, seat_row, seat_col = listexample[i]
             seat_data_feed['seatID'] = seat_id
-            seat_data_feed['studentID'] = user_id  # 如果studentID = -1则说明此位置没有人做
             seat_data_feed['seatStatus'] = seat_status
             seat_data_feed['seatType'] = seat_type
             seat_data_feed['seatRow'] = seat_row
@@ -117,36 +116,65 @@ def enter_lib():
 def leave_lib():
     conn = sqlite3.connect('feedback.db')
     cursor = conn.cursor()
+    info = dict()
 
-    # accept_data = json.loads(request.get_data())
-    #
-    # stu_id = accept_data['studentID']
-    stu_id = 3
+    accept_data = json.loads(request.get_data())
+    stu_id = accept_data['studentID']
 
     sql = '''select seat_id from seat_info where (user_id=:user_id_toFeed)'''
     cursor.execute(sql, {'user_id_toFeed': stu_id})
-    seat_id = cursor.fetchall()
-    seat_id = seat_id[0][0]
-    # 假设所有图书馆内人员都出现在seat_info中
-    info = dict()
+    listexample = cursor.fetchall()
+    if len(listexample) == 0:
+        info['statusCode'] = 400    # 该student在进入图书馆时，没有选座，因此不存在seat_info当中
+    else:
+        info['statusCode'] = 200
+        sql = '''select * from seat_leave_briefly where (user_id=:user_id_toFeed)'''
+        cursor.execute(sql, {'user_id_toFeed': stu_id})
+        is_leave_briefly = cursor.fetchall()
+        if len(is_leave_briefly) == 0:
+            sql = '''update seat_info set seat_status=0, user_id=-1 where (user_id=:user_id_toFeed)'''
+            cursor.execute(sql, {'user_id_toFeed': stu_id})
+
     data = dict()
-    data['seatID'] = seat_id
+    data['studentID'] = stu_id
     info['data'] = data
 
-    sql = '''select * from seat_leave_briefly where (user_id=:user_id_toFeed)'''
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return jsonify(info)
+
+
+'''
+主动释放
+'''
+@app.route('/seat/release', methods=['POST', 'GET'])
+def seat_release():
+    conn = sqlite3.connect('feedback.db')
+    cursor = conn.cursor()
+    info = dict()
+
+    accept_data = json.loads(request.get_data())
+    stu_id = accept_data['studentID']
+
+    sql = '''select seat_id from seat_info where (user_id=:user_id_toFeed)'''
     cursor.execute(sql, {'user_id_toFeed': stu_id})
-
     listexample = cursor.fetchall()
-    print(listexample)
-
-    if len(listexample) != 0:
-        # 短暂离席表中有这个人
-        info['statusCode'] = 200
+    if len(listexample) == 0:
+        info['statusCode'] = 400    # 该student在进入图书馆时，没有选座，因此不存在seat_info当中
     else:
-        sql = '''update seat_info set seat_status=0 where (user_id=:user_id_toFeed)'''
-        cursor.execute(sql, {'user_id_toFeed': stu_id})
         info['statusCode'] = 200
-        # 这个人直接离席，返回200还是400？
+        sql = '''select * from seat_leave_briefly where (user_id=:user_id_toFeed)'''
+        cursor.execute(sql, {'user_id_toFeed': stu_id})
+        is_leave_briefly = cursor.fetchall()
+        if len(is_leave_briefly) == 0:
+            sql = '''update seat_info set seat_status=0, user_id=-1 where (user_id=:user_id_toFeed)'''
+            cursor.execute(sql, {'user_id_toFeed': stu_id})
+
+    data = dict()
+    data['studentID'] = stu_id
+    info['data'] = data
 
     conn.commit()
     cursor.close()
@@ -207,6 +235,11 @@ def search_stu_seat():
     stu_id = accept_data['studentID']
     info = dict()
 
+    sql = '''select student_name from student_info where (student_id=:student_id_toFeed)'''
+    cursor.execute(sql, {'student_id_toFeed': stu_id})
+    stu_name = cursor.fetchall()
+    stu_name = stu_name[0][0]
+
     sql = '''select seat_id, seat_status, seat_type, seat_row, seat_col
              from seat_info where (user_id=:user_id_toFeed)'''
     cursor.execute(sql, {'user_id_toFeed': stu_id})
@@ -219,6 +252,7 @@ def search_stu_seat():
         select_seat_id, select_seat_status, select_seat_type, select_seat_row, select_seat_col = listexample[0]
         data = dict()
         data['studentID'] = stu_id
+        data['studentName'] = stu_name
         seat_data = dict()
         seat_data['seatID'] = select_seat_id
         seat_data['seatStatus'] = select_seat_status

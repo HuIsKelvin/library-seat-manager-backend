@@ -84,31 +84,36 @@ def enter_lib():
     accept_data = json.loads(request.get_data())
     stu_id = accept_data['studentID']
 
-    sql = '''select seat_id from seat_leave_briefly where (user_id=:user_id_toFeed)'''
+    sql = '''select * from student_info where (student_id=:user_id_toFeed)'''
     cursor.execute(sql, {'user_id_toFeed': stu_id})
 
-    if len(cursor.fetchall()) != 0:     #在短暂离席表中查询这个人，如果有，删除短暂离席，插入到座位信息中，如果没有什么都不用做
+    if len(cursor.fetchall()) == 0:     # 找不到该学生，无权限进入图书馆
+        info = dict()
+        info['statusCode'] = 400
+        return jsonify(info)
 
+    else:
         info = dict()
         data = dict()
         info['statusCode'] = 200
         data['studentID'] = stu_id
         info['data'] = data
-        sql = '''update seat_info set seat_status=1 where seat_info."user_id"=''' + (str(stu_id))
-        cursor.execute(sql)
-
-        sql = '''delete from seat_leave_briefly where (user_id=:user_id_toFeed)'''
+        
+        sql = '''select seat_id from seat_leave_briefly where (user_id=:user_id_toFeed)'''
         cursor.execute(sql, {'user_id_toFeed': stu_id})
 
-        conn.commit()
-        cursor.close()
-        conn.close()
+        if len(cursor.fetchall()) != 0:     #在短暂离席表中查询这个人，如果有，删除短暂离席，插入到座位信息中，如果没有什么都不用做
 
-        return jsonify(info)
+            sql = '''update seat_info set seat_status=1 where seat_info."user_id"=''' + (str(stu_id))
+            cursor.execute(sql)
 
-    else:
-        info = dict()
-        info['statusCode'] = 400
+            sql = '''delete from seat_leave_briefly where (user_id=:user_id_toFeed)'''
+            cursor.execute(sql, {'user_id_toFeed': stu_id})
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+
         return jsonify(info)
 
 '''
@@ -123,23 +128,30 @@ def leave_lib():
     accept_data = json.loads(request.get_data())
     stu_id = accept_data['studentID']
 
-    sql = '''select seat_id from seat_info where (user_id=:user_id_toFeed)'''
+    sql = '''select * from student_info where (student_id=:user_id_toFeed)'''
     cursor.execute(sql, {'user_id_toFeed': stu_id})
-    listexample = cursor.fetchall()
-    if len(listexample) == 0:
-        info['statusCode'] = 400    # 该student在进入图书馆时，没有选座，因此不存在seat_info当中
+
+    if len(cursor.fetchall()) == 0:     # 找不到该学生，无权限进入图书馆
+        info = dict()
+        info['statusCode'] = 400
+        return jsonify(info)
+
     else:
         info['statusCode'] = 200
-        sql = '''select * from seat_leave_briefly where (user_id=:user_id_toFeed)'''
-        cursor.execute(sql, {'user_id_toFeed': stu_id})
-        is_leave_briefly = cursor.fetchall()
-        if len(is_leave_briefly) == 0:
-            sql = '''update seat_info set seat_status=0, user_id=-1 where (user_id=:user_id_toFeed)'''
-            cursor.execute(sql, {'user_id_toFeed': stu_id})
+        data = dict()
+        data['studentID'] = stu_id
+        info['data'] = data
 
-    data = dict()
-    data['studentID'] = stu_id
-    info['data'] = data
+        sql = '''select seat_id from seat_info where (user_id=:user_id_toFeed)'''
+        cursor.execute(sql, {'user_id_toFeed': stu_id})
+        listexample = cursor.fetchall()
+        if len(listexample) != 0:
+            sql = '''select * from seat_leave_briefly where (user_id=:user_id_toFeed)'''
+            cursor.execute(sql, {'user_id_toFeed': stu_id})
+            is_leave_briefly = cursor.fetchall()
+            if len(is_leave_briefly) == 0:
+                sql = '''update seat_info set seat_status=0, user_id=-1 where (user_id=:user_id_toFeed)'''
+                cursor.execute(sql, {'user_id_toFeed': stu_id})
 
     conn.commit()
     cursor.close()

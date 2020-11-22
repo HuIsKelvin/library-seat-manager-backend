@@ -1,7 +1,5 @@
 import sqlite3
 from flask import Flask, jsonify, json, request
-import schedule
-import time
 
 app = Flask(__name__)
 
@@ -12,19 +10,19 @@ def all_seat_info():
     cursor = conn.cursor()
     info = dict()
 
-    sql = '''select seat_id, user_id, seat_status, seat_type, seat_row, seat_row, seat_col from seat_info'''
+    sql = '''select * from seat_info'''
     cursor.execute(sql)
     listexample = cursor.fetchall()
 
     if len(listexample) == 0:
-        info['statusCode'] = 400  # 此时seat_info表为空，没有座位，后台错误
+        info['statusCode'] = 400
     else:
         info['statusCode'] = 200
         data = dict()
         seats = []
         for i in range(len(listexample)):
             seat_data_feed = dict()
-            seat_id, user_id, seat_status, seat_type, seat_row, seat_row, seat_col = listexample[i]
+            seat_id, user_id, seat_status, seat_type, seat_row, seat_col = listexample[i]
             seat_data_feed['seatID'] = seat_id
             seat_data_feed['seatStatus'] = seat_status
             seat_data_feed['seatType'] = seat_type

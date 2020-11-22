@@ -167,12 +167,10 @@ def seat_release():
         info['statusCode'] = 400    # 该student在进入图书馆时，没有选座，因此不存在seat_info当中
     else:
         info['statusCode'] = 200
-        sql = '''select * from seat_leave_briefly where (user_id=:user_id_toFeed)'''
+        sql = '''update seat_info set seat_status=0, user_id=-1 where (user_id=:user_id_toFeed)'''      # 更改座位状态为未使用
         cursor.execute(sql, {'user_id_toFeed': stu_id})
-        is_leave_briefly = cursor.fetchall()
-        if len(is_leave_briefly) == 0:
-            sql = '''update seat_info set seat_status=0, user_id=-1 where (user_id=:user_id_toFeed)'''
-            cursor.execute(sql, {'user_id_toFeed': stu_id})
+        sql = '''delete from seat_leave_briefly where (user_id=:user_id_toFeed)'''     # 删除暂时离席表中的记录
+        cursor.execute(sql, {'user_id_toFeed': stu_id})
 
     data = dict()
     data['studentID'] = stu_id

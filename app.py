@@ -1,9 +1,9 @@
 import sqlite3
 from flask import Flask, jsonify, json, request
-import schedule
-import time
+from flask_apscheduler import APScheduler
 
 app = Flask(__name__)
+scheduler = APScheduler()
 
 '''
 获取座位列表
@@ -14,19 +14,19 @@ def all_seat_info():
     cursor = conn.cursor()
     info = dict()
 
-    sql = '''select seat_id, user_id, seat_status, seat_type, seat_row, seat_row, seat_col from seat_info'''
+    sql = '''select * from seat_info'''
     cursor.execute(sql)
     listexample = cursor.fetchall()
 
     if len(listexample) == 0:
-        info['statusCode'] = 400  # 此时seat_info表为空，没有座位，后台错误
+        info['statusCode'] = 400
     else:
         info['statusCode'] = 200
         data = dict()
         seats = []
         for i in range(len(listexample)):
             seat_data_feed = dict()
-            seat_id, user_id, seat_status, seat_type, seat_row, seat_row, seat_col = listexample[i]
+            seat_id, user_id, seat_status, seat_type, seat_row, seat_col = listexample[i]
             seat_data_feed['seatID'] = seat_id
             seat_data_feed['seatStatus'] = seat_status
             seat_data_feed['seatType'] = seat_type
@@ -328,5 +328,39 @@ def select_seat():
 
     return jsonify(info)
 
+
+'''
+短暂离席超过20分钟则自动释放座位
+scheduler的job的trigger='interval'会一直在后台循环执行
+'''
+def task_seat_release_overtime():
+    conn = sqlite3.connect('feedback.db')
+    cursor = conn.cursor()
+
+    sql = '''select seat_id from seat_leave_briefly where leave_time < (select datetime('now','localtime','-60 minutes'))'''
+    cursor.execute(sql)
+    listexample = cursor.fetchall()
+    for i in range(len(listexample)):
+        seat_id_to_release = listexample[i][0]
+        sql_update = '''update seat_info set seat_status=0, user_id=-1 where seat_id=:seat_id_toFeed'''
+        cursor.execute(sql_update, {'seat_id_toFeed':seat_id_to_release})
+
+    seat_release = '''delete from seat_leave_briefly where leave_time < (select datetime('now','localtime','-60 minutes'))'''
+
+    cursor.execute(seat_release)
+    conn.commit()
+    cursor.close()
+    conn.close()
+    # print('end one time!')
+
+
+@app.route('/seat/releaseOvertime', methods=['POST', 'GET'])
+def seat_release_overtime():
+    scheduler.add_job(func=task_seat_release_overtime, id='1', trigger='interval', seconds=10, replace_existing=True)
+    return 'success'    # 返回值，按需调整；不设返回值则报错
+
+
 if __name__ == '__main__':
+    scheduler.init_app(app=app)
+    scheduler.start()
     app.run()

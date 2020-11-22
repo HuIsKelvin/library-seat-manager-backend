@@ -5,7 +5,9 @@ import time
 
 app = Flask(__name__)
 
-
+'''
+获取座位列表
+'''
 @app.route('/seat/info', methods=['POST', 'GET'])
 def all_seat_info():
     conn = sqlite3.connect('feedback.db')
@@ -42,7 +44,7 @@ def all_seat_info():
 
 
 '''
-在图书馆登录
+在选座终端登录
 '''
 @app.route('/login', methods=['POST', 'GET'])
 def login_lib():
@@ -247,6 +249,10 @@ def search_stu_seat():
 
     if len(listexample) == 0:
         info['statusCode'] = 400    # seat_info中查无此人，暂时选择返回400：携带参数错误（建议修改返回码，或重新指定返回码规则）
+        data = dict()
+        data['studentID'] = stu_id
+        data['studentName'] = stu_name
+        info['data'] = data
     else:
         info['statusCode'] = 200    # seat_info中有此人座位记录，返回data中包括'user_id','seat_id','seat_status'
         select_seat_id, select_seat_status, select_seat_type, select_seat_row, select_seat_col = listexample[0]

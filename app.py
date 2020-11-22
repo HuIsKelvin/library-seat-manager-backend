@@ -203,15 +203,22 @@ def leave_briefly():
         info['statusCode'] = 400
     else:
         info['statusCode'] = 200
-        seat_id = listexample[0][0]
-        sql = '''insert into seat_leave_briefly
-                (id, seat_id, user_id, leave_time)
-                values
-                (null , :seat_id, :user_id, datetime('now', 'localtime'))'''
-        cursor.execute(sql, {'seat_id': seat_id, 'user_id': stu_id})    # 实现了主件id的顺序递增插入（修改了数据库表属性）
 
-        sql = '''update seat_info set seat_status=2 where seat_info."user_id"='''+(str(stu_id))
-        cursor.execute(sql)
+        # 防止在 seat_leave_briefly 重复插入
+        sql = '''select * from seat_leave_briefly where(user_id=:user_id_toFeed)'''
+        cursor.execute(sql, {'user_id_toFeed': stu_id})
+        resultLeaveBriefly = cursor.fetchall()
+        
+        if len(resultLeaveBriefly) == 0:
+            seat_id = listexample[0][0]
+            sql = '''insert into seat_leave_briefly
+                    (id, seat_id, user_id, leave_time)
+                    values
+                    (null , :seat_id, :user_id, datetime('now', 'localtime'))'''
+            cursor.execute(sql, {'seat_id': seat_id, 'user_id': stu_id})    # 实现了主件id的顺序递增插入（修改了数据库表属性）
+
+            sql = '''update seat_info set seat_status=2 where seat_info."user_id"='''+(str(stu_id))
+            cursor.execute(sql)
 
     conn.commit()
     cursor.close()

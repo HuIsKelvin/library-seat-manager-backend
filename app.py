@@ -5,7 +5,9 @@ from flask_apscheduler import APScheduler
 app = Flask(__name__)
 scheduler = APScheduler()
 
-
+'''
+获取座位列表
+'''
 @app.route('/seat/info', methods=['POST', 'GET'])
 def all_seat_info():
     conn = sqlite3.connect('feedback.db')
@@ -42,7 +44,7 @@ def all_seat_info():
 
 
 '''
-在图书馆登录
+在选座终端登录
 '''
 @app.route('/login', methods=['POST', 'GET'])
 def login_lib():
@@ -82,31 +84,36 @@ def enter_lib():
     accept_data = json.loads(request.get_data())
     stu_id = accept_data['studentID']
 
-    sql = '''select seat_id from seat_leave_briefly where (user_id=:user_id_toFeed)'''
+    sql = '''select * from student_info where (student_id=:user_id_toFeed)'''
     cursor.execute(sql, {'user_id_toFeed': stu_id})
 
-    if len(cursor.fetchall()) != 0:     #在短暂离席表中查询这个人，如果有，删除短暂离席，插入到座位信息中，如果没有什么都不用做
+    if len(cursor.fetchall()) == 0:     # 找不到该学生，无权限进入图书馆
+        info = dict()
+        info['statusCode'] = 400
+        return jsonify(info)
 
+    else:
         info = dict()
         data = dict()
         info['statusCode'] = 200
         data['studentID'] = stu_id
         info['data'] = data
-        sql = '''update seat_info set seat_status=1 where seat_info."user_id"=''' + (str(stu_id))
-        cursor.execute(sql)
-
-        sql = '''delete from seat_leave_briefly where (user_id=:user_id_toFeed)'''
+        
+        sql = '''select seat_id from seat_leave_briefly where (user_id=:user_id_toFeed)'''
         cursor.execute(sql, {'user_id_toFeed': stu_id})
 
-        conn.commit()
-        cursor.close()
-        conn.close()
+        if len(cursor.fetchall()) != 0:     #在短暂离席表中查询这个人，如果有，删除短暂离席，插入到座位信息中，如果没有什么都不用做
 
-        return jsonify(info)
+            sql = '''update seat_info set seat_status=1 where seat_info."user_id"=''' + (str(stu_id))
+            cursor.execute(sql)
 
-    else:
-        info = dict()
-        info['statusCode'] = 400
+            sql = '''delete from seat_leave_briefly where (user_id=:user_id_toFeed)'''
+            cursor.execute(sql, {'user_id_toFeed': stu_id})
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+
         return jsonify(info)
 
 '''
@@ -121,23 +128,30 @@ def leave_lib():
     accept_data = json.loads(request.get_data())
     stu_id = accept_data['studentID']
 
-    sql = '''select seat_id from seat_info where (user_id=:user_id_toFeed)'''
+    sql = '''select * from student_info where (student_id=:user_id_toFeed)'''
     cursor.execute(sql, {'user_id_toFeed': stu_id})
-    listexample = cursor.fetchall()
-    if len(listexample) == 0:
-        info['statusCode'] = 400    # 该student在进入图书馆时，没有选座，因此不存在seat_info当中
+
+    if len(cursor.fetchall()) == 0:     # 找不到该学生，无权限进入图书馆
+        info = dict()
+        info['statusCode'] = 400
+        return jsonify(info)
+
     else:
         info['statusCode'] = 200
-        sql = '''select * from seat_leave_briefly where (user_id=:user_id_toFeed)'''
-        cursor.execute(sql, {'user_id_toFeed': stu_id})
-        is_leave_briefly = cursor.fetchall()
-        if len(is_leave_briefly) == 0:
-            sql = '''update seat_info set seat_status=0, user_id=-1 where (user_id=:user_id_toFeed)'''
-            cursor.execute(sql, {'user_id_toFeed': stu_id})
+        data = dict()
+        data['studentID'] = stu_id
+        info['data'] = data
 
-    data = dict()
-    data['studentID'] = stu_id
-    info['data'] = data
+        sql = '''select seat_id from seat_info where (user_id=:user_id_toFeed)'''
+        cursor.execute(sql, {'user_id_toFeed': stu_id})
+        listexample = cursor.fetchall()
+        if len(listexample) != 0:
+            sql = '''select * from seat_leave_briefly where (user_id=:user_id_toFeed)'''
+            cursor.execute(sql, {'user_id_toFeed': stu_id})
+            is_leave_briefly = cursor.fetchall()
+            if len(is_leave_briefly) == 0:
+                sql = '''update seat_info set seat_status=0, user_id=-1 where (user_id=:user_id_toFeed)'''
+                cursor.execute(sql, {'user_id_toFeed': stu_id})
 
     conn.commit()
     cursor.close()
@@ -165,12 +179,10 @@ def seat_release():
         info['statusCode'] = 400    # 该student在进入图书馆时，没有选座，因此不存在seat_info当中
     else:
         info['statusCode'] = 200
-        sql = '''select * from seat_leave_briefly where (user_id=:user_id_toFeed)'''
+        sql = '''update seat_info set seat_status=0, user_id=-1 where (user_id=:user_id_toFeed)'''      # 更改座位状态为未使用
         cursor.execute(sql, {'user_id_toFeed': stu_id})
-        is_leave_briefly = cursor.fetchall()
-        if len(is_leave_briefly) == 0:
-            sql = '''update seat_info set seat_status=0, user_id=-1 where (user_id=:user_id_toFeed)'''
-            cursor.execute(sql, {'user_id_toFeed': stu_id})
+        sql = '''delete from seat_leave_briefly where (user_id=:user_id_toFeed)'''     # 删除暂时离席表中的记录
+        cursor.execute(sql, {'user_id_toFeed': stu_id})
 
     data = dict()
     data['studentID'] = stu_id
@@ -203,15 +215,22 @@ def leave_briefly():
         info['statusCode'] = 400
     else:
         info['statusCode'] = 200
-        seat_id = listexample[0][0]
-        sql = '''insert into seat_leave_briefly
-                (id, seat_id, user_id, leave_time)
-                values
-                (null , :seat_id, :user_id, datetime('now', 'localtime'))'''
-        cursor.execute(sql, {'seat_id': seat_id, 'user_id': stu_id})    # 实现了主件id的顺序递增插入（修改了数据库表属性）
 
-        sql = '''update seat_info set seat_status=2 where seat_info."user_id"='''+(str(stu_id))
-        cursor.execute(sql)
+        # 防止在 seat_leave_briefly 重复插入
+        sql = '''select * from seat_leave_briefly where(user_id=:user_id_toFeed)'''
+        cursor.execute(sql, {'user_id_toFeed': stu_id})
+        resultLeaveBriefly = cursor.fetchall()
+        
+        if len(resultLeaveBriefly) == 0:
+            seat_id = listexample[0][0]
+            sql = '''insert into seat_leave_briefly
+                    (id, seat_id, user_id, leave_time)
+                    values
+                    (null , :seat_id, :user_id, datetime('now', 'localtime'))'''
+            cursor.execute(sql, {'seat_id': seat_id, 'user_id': stu_id})    # 实现了主件id的顺序递增插入（修改了数据库表属性）
+
+            sql = '''update seat_info set seat_status=2 where seat_info."user_id"='''+(str(stu_id))
+            cursor.execute(sql)
 
     conn.commit()
     cursor.close()
@@ -247,6 +266,10 @@ def search_stu_seat():
 
     if len(listexample) == 0:
         info['statusCode'] = 400    # seat_info中查无此人，暂时选择返回400：携带参数错误（建议修改返回码，或重新指定返回码规则）
+        data = dict()
+        data['studentID'] = stu_id
+        data['studentName'] = stu_name
+        info['data'] = data
     else:
         info['statusCode'] = 200    # seat_info中有此人座位记录，返回data中包括'user_id','seat_id','seat_status'
         select_seat_id, select_seat_status, select_seat_type, select_seat_row, select_seat_col = listexample[0]
